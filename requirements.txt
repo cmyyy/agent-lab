@@ -1,2 +1,14 @@
+# 核心依赖（手写版必需）
 openai>=1.0
 python-dotenv
+
+# 可选依赖（LangChain 版 / 观测 / 评估，未安装时对应功能自动降级）
+# 版本锁定：LangChain 1.0 API 大改，2024 教程过时，勿降级（PRD 架构决策 1）
+langchain>=1.0
+langgraph>=1.0
+langchain-openai>=1.0
+langchain-core>=1.0
+
+# 观测与评估（FR-4 / FR-5，可选）
+# langfuse>=2.0
+# deepeval>=1.0
