@@ -60,5 +60,8 @@ class LangChainAgent:
         if history:
             messages.extend(history)
         messages.append(HumanMessage(content=user_input))
-        result = self.agent.invoke(messages)
-        return result["messages"][-1].content
+        # LangChain 1.0 create_agent 的输入必须是 state dict（默认 {"messages": [...]}）
+        result = self.agent.invoke({"messages": messages})
+        # 返回：AIMessage 列表，取最后一条的 content
+        final = result["messages"][-1]
+        return final.content

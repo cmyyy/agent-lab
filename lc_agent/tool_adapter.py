@@ -58,6 +58,10 @@ def _make_langchain_tool(name: str, handler: Callable, schema: Dict):
             result = handler(**{k: v for k, v in kwargs.items() if v is not None})
         except Exception as e:  # pragma: no cover - 兜底（handler 本身已保证不抛）
             result = {"error": f"工具执行失败: {e}"}
+        # 统一观测钩子：LangChain 版工具调用也进 recorder（trace_util，FR-4 雏形）
+        from evals.trace_util import record_tool_call
+
+        record_tool_call(name)
         return json.dumps(result, ensure_ascii=False)
 
     return StructuredTool.from_function(
