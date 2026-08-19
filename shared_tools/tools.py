@@ -18,6 +18,9 @@
 """
 import os
 
+# RAG 检索器单例（懒加载，见 _get_retriever）
+_RETRIEVER = None
+
 
 # =====================================================================
 # 工具 Schema（给 LLM 看的"菜单"）
@@ -145,17 +148,39 @@ def calculator(expression):
         return {"error": f"计算失败: {e}"}
 
 
+def _get_retriever():
+    """懒加载 Retriever 单例（首次调用时构建，避免 import 期建索引）。"""
+    global _RETRIEVER
+    if _RETRIEVER is None:
+        try:
+            from shared_tools.retriever import Retriever
+            from shared_tools.embedding import get_embedding_client
+
+            _RETRIEVER = Retriever(embedding=get_embedding_client())
+        except Exception:
+            _RETRIEVER = Retriever()  # embedding 客户端不可用 → 降级 n-gram
+    return _RETRIEVER
+
+
 def search_knowledge(query):
-    """本地知识库关键词搜索（后续升级方向：embedding + 向量库 = RAG）。"""
-    kb = {
-        "python": "Python由Guido van Rossum于1991年创建，是一种解释型高级语言。",
-        "agent": "AI Agent是能自主使用工具完成任务的智能系统。",
-        "api": "API定义了软件组件间的交互方式。",
-    }
-    for k, v in kb.items():
-        if k in query.lower():
-            return {"results": [v]}
-    return {"results": ["未找到相关内容"]}
+    """RAG 语义检索（FR-6 升级版）：目录加载 + 切块 + 语义/关键词降级检索。
+
+    返回结构保持兼容：{"results": [...]}，每项 {text, source, score}。
+    未命中返回空 results（与旧版"未找到相关内容"对齐为可解析结果）。
+    """
+    try:
+        r = _get_retriever()
+        return r.search(query, top_k=4)
+    except Exception:
+        return {"results": []}  # fail-open（FR-6 契约）
+
+
+def _knowledge_available() -> bool:
+    """check_fn：知识库目录存在且有语料才暴露工具（模型看不到=不会幻觉调用）。"""
+    try:
+        return _get_retriever().size > 0
+    except Exception:
+        return False
 
 
 def save_note(title, content):

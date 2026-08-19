@@ -23,6 +23,12 @@ from .tools import (
 # registry.register(name=..., toolset=..., schema=..., handler=..., check_fn=...) 模式）
 for _schema in TOOLS_SCHEMA:
     _name = _schema["function"]["name"]
-    registry.register(_name, _schema, TOOL_MAP[_name])
+    # search_knowledge 依赖知识库语料：无语料时不暴露（check_fn，模型看不到=不会幻觉调用）
+    _check_fn = None
+    if _name == "search_knowledge":
+        from .tools import _knowledge_available
+
+        _check_fn = _knowledge_available
+    registry.register(_name, _schema, TOOL_MAP[_name], check_fn=_check_fn)
 
 __all__ = ["registry", "ToolRegistry", "TOOLS_SCHEMA", "TOOL_MAP"]
