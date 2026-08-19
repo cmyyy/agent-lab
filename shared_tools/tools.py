@@ -184,21 +184,17 @@ def _knowledge_available() -> bool:
 
 
 def save_note(title, content):
-    """保存笔记为本地文本文件（./notes/<标题>.txt）。"""
-    os.makedirs("./notes", exist_ok=True)
-    path = f"./notes/{title}.txt"
-    with open(path, "w", encoding="utf-8") as f:
-        f.write(content)
-    return {"status": "ok", "path": path}
+    """保存笔记到 SQLite（FR-3：修正相对路径 bug，不再写 ./notes/<title>.txt）。"""
+    from shared_tools.memory import save_note as _db_save
+
+    return _db_save(title, content)
 
 
 def read_note(title):
-    """读取已保存的笔记；文件不存在时返回结构化错误（不抛异常）。"""
-    path = f"./notes/{title}.txt"
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return {"title": title, "content": f.read()}
-    return {"error": f"未找到笔记: {title}"}
+    """从 SQLite 读取笔记；不存在返回结构化错误（不抛异常）。"""
+    from shared_tools.memory import read_note as _db_read
+
+    return _db_read(title)
 
 
 # 工具名 -> 实现函数的映射（分发表）
