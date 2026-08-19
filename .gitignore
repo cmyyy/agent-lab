@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+notes/
+.env
+evals/results/
+evals/failures/
+memory/experiences.jsonl
