@@ -20,7 +20,7 @@ from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
-from langchain.tool_adapter import get_langchain_tools
+from lc_agent.tool_adapter import get_langchain_tools
 
 load_dotenv()
 

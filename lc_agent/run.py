@@ -1,6 +1,6 @@
 """agent-lab LangChain 版入口：跑与手写版相同的演示场景（对比公平性）。"""
 
-from langchain.agent import LangChainAgent
+from lc_agent.agent import LangChainAgent
 
 DEMO_CASES = [
     # 场景 1：多工具连续调用（weather -> calculator 链式）——与 handcrafted/run.py 完全相同

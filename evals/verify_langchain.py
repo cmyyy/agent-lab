@@ -29,7 +29,7 @@ def check(name, cond, extra=""):
 
 def main():
     print("[1] 工具适配层（registry → StructuredTool）")
-    from langchain.tool_adapter import get_langchain_tools
+    from lc_agent.tool_adapter import get_langchain_tools
 
     tools = get_langchain_tools()
     check("6 个工具全部转换", len(tools) == 6, f"(={len(tools)})")
@@ -49,7 +49,7 @@ def main():
     check("读不存在笔记返回结构化错误", "error" in r3, f"(={r3})")
 
     print("[3] Agent 构建（LangChain 1.0 create_agent + ChatOpenAI）")
-    from langchain.agent import LangChainAgent
+    from lc_agent.agent import LangChainAgent
 
     agent = LangChainAgent()
     check("agent 构建成功", agent.agent is not None)
