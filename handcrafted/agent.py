@@ -30,12 +30,13 @@ class AgentLoop:
     让模型根据错误自行调整（对应 Hermes 的 _sanitize_tool_error 思路）。
     """
 
-    def __init__(self, client, model="deepseek-v4-flash", max_iterations=10, temperature=0, max_retries=3):
+    def __init__(self, client, model="deepseek-v4-flash", max_iterations=10, temperature=0, max_retries=3, max_context_messages=20):
         self.client = client
         self.model = model
         self.max_iterations = max_iterations
         self.temperature = temperature
         self.max_retries = max_retries
+        self.max_context_messages = max_context_messages  # FR-2 滑动窗口大小
         self.registry = registry
 
     def _llm_call(self, messages):
@@ -86,8 +87,15 @@ class AgentLoop:
             messages = list(history) + [{"role": "user", "content": user_input}]
 
         for i in range(1, self.max_iterations + 1):
-            logger.info("第 %d 轮：调 LLM（模型=%s，消息数=%d）", i, self.model, len(messages))
-            response = self._llm_call(messages)
+            # FR-2 上下文管理（轻量版）：滑动窗口 + 截断，防长对话爆窗口
+            from shared_tools.context import apply_sliding_window, apply_message_truncation
+
+            windowed = apply_sliding_window(messages, system_prompt, max_messages=self.max_context_messages)
+            windowed = apply_message_truncation(windowed)
+            logger.info("第 %d 轮：调 LLM（模型=%s，窗口内消息=%d，总 token≈%d）",
+                        i, self.model, len(windowed),
+                        sum(len(str(m.get("content", ""))) for m in windowed))
+            response = self._llm_call(windowed)
             msg = response.choices[0].message
 
             # 模型没有要求调用工具 = 这就是最终回答
@@ -96,7 +104,23 @@ class AgentLoop:
                 return msg.content
 
             # 模型要求调用工具：把 assistant 消息（含 tool_calls）加进历史
-            messages.append(msg)
+            # 统一转 dict（真实 client 返回 pydantic 对象、fake 返回自定义对象，
+            # 滑动窗口/截断只认 dict——FR-2 前置）
+            try:
+                messages.append(msg.model_dump())
+            except AttributeError:
+                messages.append({
+                    "role": "assistant",
+                    "content": getattr(msg, "content", None),
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                        }
+                        for tc in (msg.tool_calls or [])
+                    ],
+                })
 
             for tc in msg.tool_calls:
                 name = tc.function.name
